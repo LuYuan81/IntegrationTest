@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="ISO-8859-1" standalone="yes" ?>
+<testmodule starttime="2013-06-09 16:30.29" timestamp="  30.209792">
+  <verdict time="2013-06-09 16:30.35" timestamp="  35.368792" endtime="2013-06-09 16:30.35" endtimestamp="  35.368792" result="pass" />
+  <title>I&amp;T_TEST</title>
+  <engineer>
+    <xinfo>
+      <name>Windows Login Name</name>
+      <description>Administrator</description>
+    </xinfo>
+  </engineer>
+  <testsetup>
+    <xinfo>
+      <name>Version</name>
+      <description>CANoe.LIN 7.2.72 (SP5)</description>
+    </xinfo>
+    <xinfo>
+      <name>Configuration</name>
+      <description>E:\CUnit\eclipse\workspace\Application\TestCasePrj\I&amp;TTEST.cfg</description>
+    </xinfo>
+    <xinfo>
+      <name>Configuration Comment</name>
+      <description></description>
+    </xinfo>
+    <xinfo>
+      <name>Test Module Name</name>
+      <description>I&amp;amp;T_TEST</description>
+    </xinfo>
+    <xinfo>
+      <name>Test Module File</name>
+      <description>E:\CUnit\eclipse\workspace\Application\TestCasePrj\I&amp;amp;T_TEST.can</description>
+    </xinfo>
+    <xinfo>
+      <name>Last modification of Test Module File</name>
+      <description>2013-05-09, 10:12:19</description>
+    </xinfo>
+    <xinfo>
+      <name>Windows Computer Name</name>
+      <description>PC-20120622LQTE</description>
+    </xinfo>
+  </testsetup>
+</testmodule>
+<!--footprint="189aa87881110d422f6722dc238b553d" version="1"-->

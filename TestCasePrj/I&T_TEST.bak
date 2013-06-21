@@ -1,0 +1,833 @@
+/*@@var:*/
+
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+/* Project Name: integration test
+/* File Name: I&T_TEST.can
+/* Description : 
+/*
+/* --------------------------------------------------------------------------
+/*            		 A U T H O R  I D E N T I T Y
+/* --------------------------------------------------------------------------
+/* Initials     Name            Company
+/* --------     -------------   ---------------------------------------------
+/*                              i-soft
+/* 
+/* 
+/* --------------------------------------------------------------------------
+/*             		R E V I S I O N  H I S T O R Y
+/* --------------------------------------------------------------------------
+/* Date         Ver  Author     Description
+/* ------------ ---- -------    ---------------------------------------------
+/* 2013-04-07    YYH            init
+/* 2013-04-08    DWB            updata
+/*                             
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
+variables
+{
+    // define sys Variable start &  stop
+    // start
+    // stop
+    //STEP FILENAME define
+    char FileStepName[1024] = "CANTestCase.dat";  //可设置系统变量 or 环境变量 ，让其在panel上输入
+    char TimeBuffTestStart[1024];  //记录测试开始时间
+    char TimeBuffTestStop[1024];   //记录测试结束时间
+
+    //TestInformation Globle Variable
+    char Script[1024];          /*Test Version*/
+    char TimeStamp[1024];       /*Start Time of Test*/
+    char TestComment[1024];     /*The Description of Test*/
+    char Tester[1024];          /*Tester*/
+    long SumStep = -1;          /*STEP Counter*/
+
+    //define STEP Globle Variable
+    char Action[1024];          /*执行动作，START，CALL，TERROR，TIMEWAITFOR，REST，END */   
+    char Test_ID[1024];
+    char TestCaseName[1024];    /*测试用例名称 对应STEP 下的 COMMENT*/
+    //char Function_ID[1024];   
+    int Function_ID;            /*被调用API的序列号*/
+    //int Function_ID_num = -1;
+    char Sequence_IN[1024];     /*被调用API的参数数组*/
+    int SequenceIn_Num;        /*输入数据的个数*/
+    char Sequence_OUT[1024];    /*被调用API的返回值数组*/
+    char Rs232CmpData_Str[1024];    /*保存rs232需比较的数据*/
+    int SequenceOut_Num;        /*输出数据的个数*/
+    dword DELAYTIME;            /*Opt Value: 0 or 1*/
+    char SetErrorFrame[2];      /*SetErrorFrame[1] 发送error次数，SetErrorFrame[2]发送error的周期*/
+    char MessageText[1024];     /*在上位机输出的提示信息*/
+    //char CANMsgIN_ID[1024];     /*被测试对象发出的CAN帧的ID*/
+    int CANMsgIN_ID;            /*被测试对象发出的CAN帧的ID*/
+    char CANMsgIN_DATA[1024];   /*被测试对象发出的CAN帧的数据*/
+    char CANCmpData_Str[1024];  /*保存CAN比较的数据字符串*/
+    int  CANMsgIN_DATANum;      /*被测试对象发出的CAN帧的数据个数*/
+
+    /* globle flag*/
+    char Rs232Data_Check = 0;   /* 0: 不需要做check, 1: 需要做check*/
+    char CanData_Check = 0;     /* 0: 不需要做check, 1: 需要做check*/
+    char StepCheckResult_Rs232 = 1;   /* 0: setp test result fail, 1: setp test result pass*/
+    char StepCheckResult_Can = 1;   /* 0: setp test result fail, 1: setp test result pass*/
+
+    //SAVE Information
+    char TestInformationFile[1024] = "";    /* test case record file name*/
+    char buffCaseNum[1024];
+
+    //TX msg
+    char msgid_OUT;
+    char msgdlc_OUT;
+    const int Max_Data = 255;
+    char data_OUT[Max_Data];
+
+    //define RS232 Port
+    dword PortA = 1;
+    dword PortB = 2;
+    char Rs232NewCommand = 0;   /*以':'判断是否为新的RS232报文*/
+    int  Rx232DataNum = 0;      /*接收到RS232数据个数计数器*/
+    byte Rx232CommCS = 0;       /*接收到数据的checksum*/
+    byte Rx232CommLen = 0;      /*接收到实际有用数据的个数：除去':',ID和Dlc*/
+    byte Rs232buff_recv[1024];  /*接收到的rs232数据*/
+    char Rs232Recv_Str[1024];   /*保存接收到的rs232数据，把hex数据转换成字符串*/
+    int Rs232Rsp_Recv = 0;      /* 0: response not receive  1: response receive*/
+    int Rs232WaitRspTime = 200; /*发送命令后，响应需等待时间,由于RS232速度的原因，等待时间太小有时收不全*/
+
+    /*RX CAN msg*/
+    char CANMsgFlag_Recv = 0;
+    int CanID_Recv;
+    char CanDlc_Recv;
+    byte CanData_Recv[8];
+    char CanDataRecv_Str[1024]; /*保存接收到的CAN数据的字符*/
+    int  CANTestWaitTime = 50;
+
+    //timer 
+    mstimer WaitforaMinute;
+    int WaitforaMinute_TimeOut = 0;
+    int WaitDuation = 100;//1s,等待时间设置
+
+    message 0x100 TestMsg_Tx;
+
+
+}
+/*@@end*/
+
+/*@@sysvarChange:STARTPANEL::Stop:*/
+on sysvar sysvar::STARTPANEL::Stop
+{
+    /*close rs232 serial port*/
+    CloseRS232Port (PortA);
+    //CloseRS232Port (PortB);
+
+    if( @sysvar::STARTPANEL::Stop == 1 )
+    {
+         stop();//stop project  
+    }
+
+
+}
+/*@@end*/
+
+/*@@caplFunc:GetTestInformation():*///function
+GetTestInformation()
+{
+    getProfileString("TestInformation", "SCRIPT", "default string", Script, elcount(Script), FileStepName);
+    getProfileString("TestInformation", "TIMESTAMP", "default string", TimeStamp, elcount(TimeStamp), FileStepName);
+    getProfileString("TestInformation", "COMMENT", "default string", TestComment, elcount(TestComment), FileStepName);
+    getProfileString("TestInformation", "TESTER", "default string", Tester, elcount(Tester), FileStepName);
+    //SumStep = getProfileInt("TestInformation", "SUMSTEP", -1, FileStepName);
+
+    
+    write("Version: %s", Script);
+    write("Time: %s", TimeStamp);
+    write("Test Scope: %s", TestComment);   
+    write("Tester: %s", Tester);
+      
+}
+/*@@end*/
+
+/*@@caplFunc:GetStepNMessage(long):*///function
+GetStepNMessage (long n )
+{
+    //define Step N
+    char StepNum[16];
+    char NumChar[16];
+    int counter;
+    int returnArray;
+
+    /* auto gen section name */
+    substr_cpy_off(StepNum, 0, "", 0, -1, 0);/*清空字符串StepNum*/
+    ltoa(n, NumChar, 10);//转换至十进制字符串
+    strncat(StepNum, "STEP", 16);
+    strncat(StepNum, NumChar, 16);
+    substr_cpy_off(TestCaseName, 0, "", 0, -1, 0);
+    
+    /*ACTION*/
+    getProfileString(StepNum, "ACTION", "default string", Action, elcount(Action), FileStepName);
+    //返回default string时，提示STEP总得数目。
+    if(strstr(Action, "default string") == -1 )//not found 返回值不为default string时，读取其他关键词的值
+    {
+        /*TEST_ID*/
+        getProfileString(StepNum, "TEST_ID", "default string", Test_ID, elcount(Test_ID), FileStepName);
+        write("TEST_ID = %s", Test_ID);
+
+        /*COMMENT*/
+        getProfileString(StepNum, "COMMENT", "default string", TestCaseName, elcount(TestCaseName), FileStepName);
+
+        /*FUNCTION_ID*/
+        Function_ID = getProfileInt(StepNum, "FUNCTION_ID", -1, FileStepName);
+        //getProfileString(StepNum, "FUNCTION_ID", "default string", Function_ID, elcount(Function_ID), FileStepName);
+
+        /*SEQUENCE_IN*/
+        returnArray = getProfileArray(StepNum, "SEQUENCE_IN", Sequence_IN, elcount(Sequence_IN), FileStepName);               
+        if(returnArray)
+        {
+            SequenceIn_Num = returnArray;
+            for(counter = 0; counter < returnArray; counter++ )
+            {
+                write("Sequence_IN[%d] = %d", counter, Sequence_IN[counter]);    
+            }
+        }
+        else
+        {
+            SequenceIn_Num = 0;
+            write("'SEQUENCE_IN' There is no parameter.");
+            /*设置判断是否存在输入参数*/
+            /*
+            填写程序            
+            */
+            substr_cpy_off(Sequence_IN,0, "", 0, -1, 1024);
+
+        }
+        /*SEQUENCE_OUT*/
+        substr_cpy_off(Rs232CmpData_Str, 0, "", 0, -1, 0);
+        returnArray = getProfileArray(StepNum, "SEQUENCE_OUT", Sequence_OUT, elcount(Sequence_OUT), FileStepName);  
+        getProfileString(StepNum, "SEQUENCE_OUT", "default string", Rs232CmpData_Str, elcount(Rs232CmpData_Str), FileStepName);             
+        if(returnArray)
+        {
+            Rs232Data_Check = 1;
+            SequenceOut_Num = returnArray;
+
+            for(counter = 0; counter < returnArray; counter++ )
+            {
+                write("Sequence_OUT[%d] = %d", counter, Sequence_OUT[counter]); 
+
+            }
+        }
+        else
+        {
+            Rs232Data_Check = 0;
+            substr_cpy_off(Rs232CmpData_Str, 0, "", 0, -1, 0);
+            write("'Sequence_OUT' There is no returnValue.");
+            /*设置是否需要判断输出结果的标识*/
+            /*
+            填写程序            
+            */
+            substr_cpy_off(Sequence_OUT,0, "", 0, -1, 1024);
+        }
+
+        /*CHECKENABLE*/
+        DELAYTIME = getProfileInt(StepNum, "DELAYTIME", -1, FileStepName);
+
+        /*SETERRORFRAME*/
+        returnArray = getProfileArray(StepNum, "SETERRORFRAME", SetErrorFrame, elcount(SetErrorFrame), FileStepName);  
+        if(returnArray)
+        {
+            for(counter = 0; counter < returnArray; counter++ )
+            {
+                write("SetErrorFrame[%d] = %d", counter, SetErrorFrame[counter]);    
+            }
+        }
+        else
+        {
+            write("'SetErrorFrame' There is no returnValue.");
+            /*设置error标识*/
+            /*
+            填写程序            
+            */
+            substr_cpy_off(SetErrorFrame,0, "", 0, -1, 1024);
+        }   
+             
+        /*MESSAGETEXT*/
+        getProfileString(StepNum, "MESSAGETEXT", "default string", MessageText, elcount(MessageText), FileStepName);   
+        if(strstr(MessageText, "default string") == -1 )
+        {
+            //write("message text is %s", MessageText);
+        }
+        else
+        {
+            write("There is no Text message.");
+            /*设置error标识*/
+            /*
+            填写程序            
+            */        
+        }
+
+        /*CANMSGIN_ID*/
+        //getProfileString(StepNum, "CANMSGIN_ID", "default string", CANMsgIN_ID, elcount(CANMsgIN_ID), FileStepName);
+        CANMsgIN_ID = getProfileInt(StepNum, "CANMSGIN_ID", -1, FileStepName);
+   
+        /*CANMSGIN_DATA*/
+        substr_cpy_off(CANCmpData_Str, 0, "", 0, -1, 0);
+        returnArray = getProfileArray(StepNum, "CANMSGIN_DATA", CANMsgIN_DATA, elcount(CANMsgIN_DATA), FileStepName);               
+        getProfileString(StepNum, "CANMSGIN_DATA", "default string", CANCmpData_Str, elcount(CANCmpData_Str), FileStepName);
+        if(returnArray)
+        {
+            CanData_Check = 1;
+            CANMsgIN_DATANum = returnArray;
+
+            for(counter = 0; counter < returnArray; counter++ )
+            {
+                write("CANMsgIN_DATA[%d] = %d", counter,CANMsgIN_DATA[counter]);    
+            }
+        }
+        else
+        {
+            CanData_Check = 0;
+            substr_cpy_off(CANCmpData_Str, 0, "", 0, -1, 0);
+            write("'CANMsgIN_DATA' There is no returnValue.");
+            /*设置error标识*/
+            /*
+            填写程序            
+            */
+            substr_cpy_off(CANMsgIN_DATA,0, "", 0, -1, 1024);
+        } 
+    }
+    else //founded
+    {
+       
+        SumStep = n-1; 
+        //统计STEP数目
+        write("The number of STEP is %d.", SumStep); 
+    }        
+
+}
+/*@@end*/
+
+/*@@caplFunc:ImplementCase():*///function
+ImplementCase ()
+{   
+    //统计Test Case数
+    int i = 1;//记录Step数目
+    int j;
+    char FCT_ID[1024];
+    char NewCaseFlag = 0;   /* 1: new case 0: not new case*/
+    char LastCaseName[1024];
+    char NewCaseName[1024];
+    int StartCasei;      /* 每个Test Case的起始STEP*/
+    int EndCasei;
+    char StartCaseiChar;    /*转换成字符*/
+    char EndCaseiChar;  
+    int TestCaseNum;
+    char TestCaseNumChar[1024];
+    long ActionState = 1;   /* 1: Action support, 0:Action not support*/    
+
+    /*当未读取最后一条STEP时，sumstep一直未-1*/
+    while(SumStep == -1)
+    {
+        substr_cpy_off(data_OUT, 0, "0", 0, -1, Max_Data);        
+        GetStepNMessage (i);    /*read one step information */
+        
+        if(strstr(Action, "START") != -1)
+        {
+            NewCaseFlag = 1;
+            StartCasei = i; //标记每个TestCase的开始
+            TestCaseNum ++; //统计TestCase的个数
+        }      
+        else if(strstr(Action, "CALL") != -1)//准备msgid dlc data
+        {    
+            NewCaseFlag = 0;
+            msgid_OUT = 0x51;//从上位机发出的数据，ID设置为0x51
+            msgdlc_OUT = SequenceIn_Num + 2;
+            data_OUT[0] = 0x01;//ACTION 为CALL时，id = 0x01;          
+            
+            data_OUT[1] = Function_ID; 
+            
+            for(j = 0; j < SequenceIn_Num; j++)
+            {
+                data_OUT[j + 2] = Sequence_IN[j];
+            }       
+
+            RS232Transmit (msgid_OUT, msgdlc_OUT, data_OUT);//通过RS232发送数据
+
+            Delay(200);
+        
+        }
+        else if(strstr(Action, "TERROR") != -1)//发送error frame, 调用timer, 控制errror frame 个数（SetErrorFrame[1]）和周期（SetErrorFrame[2]）
+        {
+            NewCaseFlag = 0;
+        }
+
+        else if(strstr(Action, "TIMEWAITFOR") != -1)//上位机
+        {    
+            NewCaseFlag = 0;
+
+            Delay(DELAYTIME);
+        
+        }
+        else if(strstr(Action, "RESET") != -1)//让下位机复位,数据指令/* : 0x51 0x01 0x02 0x54 */
+        {   
+            NewCaseFlag = 0;
+
+            msgid_OUT = 0x51;
+            msgdlc_OUT = 0x01;
+            data_OUT[0] = 0x02; //ACTION 为RESET时，id = 0x02;
+            RS232Transmit (msgid_OUT, msgdlc_OUT, data_OUT);        
+        }
+
+        else if(strstr(Action, "CANTX") != -1)//当出现CANTX时，执行上位机发送CAN报文的动作;
+        {
+            NewCaseFlag = 0;
+
+            TestMsg_Tx.id = Sequence_IN[0] * 256 + Sequence_IN[1];
+            TestMsg_Tx.dlc = SequenceIn_Num - 2;
+            
+            if((SequenceIn_Num - 2) > 8)
+            {
+
+                write("the length of CAN data great than 8");
+            }
+            else
+            {
+                for(j = 0; j < SequenceIn_Num - 2; j++)
+                {
+                    TestMsg_Tx.byte(j) = Sequence_IN[j + 2];
+                }
+                output(TestMsg_Tx);           
+            }
+        }
+        else if(strstr(Action, "END") != -1)//当出现END时，执行的动作;
+        {
+            NewCaseFlag = 0;
+            EndCasei = i;
+
+            substr_cpy_off(buffCaseNum, 0, "", 0, -1, 0);//buff clear      
+            snprintf(buffCaseNum, 1024, "Test Case %d: %s, From STEP %d to %d \n",TestCaseNum, TestCaseName, StartCasei, EndCasei);
+            write(buffCaseNum);
+            //SaveOneTestInformation (TestCaseNum); 
+        }    
+        else
+        {
+            ActionState = 0;
+            if(strstr(Action, "default string") == -1 )
+            {
+                write("Action is invalid");
+            }
+        } 
+        
+        if(ActionState == 1)
+        {
+            StepTestResult();   /* check the test result of each step */  
+
+            TestInfoRecord(NewCaseFlag,i,TestCaseNum);
+        }
+        else
+        {
+            ActionState = 1;
+        }
+
+        i++;
+    }
+}
+/*@@end*/
+
+/*@@caplFunc:RS232Transmit(char,char,char[]):*///function
+RS232Transmit (char msgid, char msgdlc, char data[])
+{
+    
+    
+    byte buff[1024]; 
+    int i;
+    char sum ;   //check sum  
+
+    i = 0;
+    sum = 0;   //check sum 
+    
+
+    buff[0] = 0x3a;         //":" 标记开始位
+    buff[1] = msgid&0xFF;  sum = msgid;     //msgid
+    buff[2] = msgdlc&0xFF; sum += msgdlc;   //msgdlc
+    
+    for(i = 0; i< msgdlc; i++)
+    {
+        buff[i+3] = data[i]&0xFF;
+        sum += data[i];
+    }
+
+    buff[msgdlc + 3] = sum&0xFF;    //check sum  最后一位
+
+    if( 1 == rs232send(PortA, buff, msgdlc+4))  //用RS232发送数据
+    {
+        write("Send bytes to port %d successfully.", PortA);
+    }
+    else
+    {
+        write("There is error when sending data.");
+    }
+   
+
+
+}
+/*@@end*/
+
+/*@@caplFunc:RS232RxControl():*///function
+RS232RxControl()
+{
+   
+
+}
+/*@@end*/
+
+/*@@timer:WaitforaMinute:*/
+on timer WaitforaMinute
+{
+    setTimer(WaitforaMinute, WaitDuation);
+    WaitforaMinute_TimeOut = 1;
+}
+/*@@end*/
+
+/*@@caplFunc:StartRS232Port(dword):*///function
+StartRS232Port (dword port)
+{
+    //打开RS232端口
+    if( 1 == rs232open(port) ) write("port %d has been opened.", port);
+    if( 1 == rs232Configure(port, 9600, 8, 1, 0)) write("port %d configure has been done.", port);
+}
+/*@@end*/
+
+/*@@caplFunc:CloseRS232Port(dword):*///function
+CloseRS232Port (dword port)
+{
+   //关闭RS232端口
+   if( 1 == rs232close(port)) write("port %d has been closed.", port);      
+}
+/*@@end*/
+
+/*@@caplFunc:RS232OnError(dword,dword):*///callback
+RS232OnError (dword port, dword errorFlags )
+{
+    if ( errorFlags & 0 ) writeLineEx(0,3,"send failed");
+    if ( errorFlags & 1 ) writeLineEx(0,3,"receive failed");
+    if ( errorFlags & 2 ) writeLineEx(0,3,"Frame error.");
+    if ( errorFlags & 3 ) writeLineEx(0,3,"Frame parity error. Is caused by parity mismatch.");
+    if ( errorFlags & 4 ) writeLineEx(0,3,"Buffer overrun.");
+    if ( errorFlags & 5 ) writeLineEx(0,3,"Buffer overrun at receiver.");
+    if ( errorFlags & 6 ) writeLineEx(0,3,"Break state.");
+    if ( errorFlags & 7 ) writeLineEx(0,3,"Timeout.");
+}
+/*@@end*/
+
+/*@@caplFunc:Delay(dword):*///function
+Delay(dword DelayTime)
+{   
+    testwaitfortimeout(DelayTime);
+}
+/*@@end*/
+
+/*@@mainTest:MainTest():*/
+void MainTest()
+{
+    int i = 1;
+    getLocalTimeString(TimeBuffTestStart);//read local run time
+    writeProfileString("TestInformation", "TIMESTAMP", TimeBuffTestStart, FileStepName);//write time to dat file   
+
+    while(@ sysvar::STARTPANEL::Start == 0)
+    {   
+        delay(1);
+    }
+
+    if( @sysvar::STARTPANEL::Start == 1 )
+    {
+        /*read test information*/
+         GetTestInformation ();
+
+        /*OPEN serial PORT*/
+        StartRS232Port (PortA);
+              
+        /*Test*/
+        ImplementCase ();
+
+    }
+
+}
+/*@@end*/
+
+/*@@preStart:PreStart:*/
+on preStart
+{
+    openPanel("StartPanel");// 
+    writeclear(1); 
+}
+/*@@end*/
+
+/*@@caplFunc:StepTestResult():*///function
+StepTestResult()
+{   /* check the test result of each step*/
+    char i;
+    char Rs232Data_Str[10];
+    char CanData_Str[10];
+
+    StepCheckResult_Rs232 = 1;
+    StepCheckResult_Can = 1;
+
+    substr_cpy_off(Rs232Recv_Str, 0, "", 0, -1, 0);
+    substr_cpy_off(CanDataRecv_Str, 0, "", 0, -1, 0);
+
+    if(Rs232Data_Check == 1)
+    {
+        Rs232Data_Check = 0;
+
+        WaitDuation = Rs232WaitRspTime;
+        settimer(WaitforaMinute,WaitDuation);
+        do
+        {
+            if(Rs232Rsp_Recv == 1)
+            {   
+                Rs232Rsp_Recv = 0;
+                canceltimer(WaitforaMinute);
+
+                for(i = 0; i < SequenceOut_Num; i++)
+                {   
+                    ltoa(Rs232buff_recv[i + 3],Rs232Data_Str,10);
+                    if(i != SequenceOut_Num - 1)
+                    {
+                        strncat(Rs232Data_Str, ",", 1024);
+                    }
+                    strncat(Rs232Recv_Str, Rs232Data_Str, 1024);
+                    
+                }
+
+                for(i = 0; i < SequenceOut_Num; i++)
+                {   
+                    if(Sequence_OUT[i] != Rs232buff_recv[i + 3])
+                    {
+                        StepCheckResult_Rs232 = 0;
+                        break;
+                    }
+                    StepCheckResult_Rs232 = 1;  
+                }
+                break;
+            }
+
+            Delay(1);
+
+        }while(WaitforaMinute_TimeOut == 0);
+
+        if(WaitforaMinute_TimeOut == 1)
+        {
+            canceltimer(WaitforaMinute);
+
+            WaitforaMinute_TimeOut = 0;
+
+            StepCheckResult_Rs232 = 0;
+            write("rs232 response msg not received");
+        }
+    }
+
+    if(CanData_Check == 1)
+    {
+        CanData_Check = 0;
+        Delay(CANTestWaitTime);
+        if(CANMsgFlag_Recv == 1)
+        {
+            CANMsgFlag_Recv = 0;
+
+            if(CanID_Recv == CANMsgIN_ID)
+            {
+                for(i = 0; i < CANMsgIN_DATANum; i++)
+                {
+                    ltoa(CanData_Recv[i],CanData_Str,10);
+                    if(i != CANMsgIN_DATANum - 1)
+                    {
+                        strncat(CanData_Str, ",", 1024);
+                    }
+                    strncat(CanDataRecv_Str, CanData_Str, 1024);
+                }
+
+                for(i = 0; i < CANMsgIN_DATANum; i++)
+                {
+                    if(CANMsgIN_DATA[i] != CanData_Recv[i])
+                    {
+                        StepCheckResult_Can = 0;
+                        break;
+                    }
+                    StepCheckResult_Can = 1;  
+                }
+            }
+            else
+            {
+                StepCheckResult_Can = 0;
+                write("CANID NOT Equal");
+            }
+        }
+        else
+        {
+            StepCheckResult_Can = 0;
+            write("CAN msg not received");
+        }
+    }
+}
+/*@@end*/
+
+/*@@msg:*:*/
+on message *
+{
+    char i;
+
+    if(this.dir == Rx)
+    {
+        CANMsgFlag_Recv = 1;
+
+        CanID_Recv = this.id;
+        CanDlc_Recv = this.dlc;
+        for(i = 0; i < CanDlc_Recv; i++)
+        {
+            CanData_Recv[i] = this.byte(i);
+        }
+    }
+}
+/*@@end*/
+
+/*@@caplFunc:TestInfoRecord(char,char,int):*///function
+TestInfoRecord(char NewCaseFlag,char CaseStep,int CaseIndex)
+{
+    dword STHandle = 0;
+    char TestCaseNumChar[1024] = "";
+    //char buffText[1024] = "Test Case 1";
+    
+    if(NewCaseFlag == 1)
+    {
+        substr_cpy_off(TestInformationFile, 0, "", 0, -1, 0);
+        ltoa(CaseIndex, TestCaseNumChar, 10);
+        strncat(TestInformationFile, "TestCase", 1024);
+        strncat(TestInformationFile, TestCaseNumChar, 1024);
+        strncat(TestInformationFile, ".txt", 1024);
+
+        STHandle = openFileWrite(TestInformationFile, 0);   
+        snprintf(buffCaseNum, 1024, "Test Case %d: %s \n",CaseIndex, TestCaseName); 
+        while(filePutString(buffCaseNum, elcount(buffCaseNum), STHandle) != 1)
+        {}// 1: write success
+
+        substr_cpy_off(buffCaseNum, 0, "", 0, -1, 0);
+        snprintf(buffCaseNum, 1024, "Step %d: %s \n",CaseStep, Action); 
+        while(filePutString(buffCaseNum, elcount(buffCaseNum), STHandle) != 1)
+        {}// 1: write success
+
+        fileClose(STHandle);
+    }
+    else
+    {   /*append data at the end of the file*/
+        STHandle = openFileWrite(TestInformationFile, 2);
+
+        if(strstr(Action, "END") == -1)
+        {
+            substr_cpy_off(buffCaseNum, 0, "", 0, -1, 0);
+            if((StepCheckResult_Rs232 == 1) && (StepCheckResult_Can == 1))
+            {
+                snprintf(buffCaseNum, 1024, "Step %d: %s Fuction %d: OK \n",CaseStep, Action,Function_ID); 
+                while(filePutString(buffCaseNum, elcount(buffCaseNum), STHandle) != 1)
+                {}// 1: write success
+                
+                substr_cpy_off(buffCaseNum, 0, "", 0, -1, 0);
+                snprintf(buffCaseNum, 1024, "  Rs232 Cmp Data: %s \n", Rs232CmpData_Str); 
+                while(filePutString(buffCaseNum, elcount(buffCaseNum), STHandle) != 1)
+                {}// 1: write success
+
+                substr_cpy_off(buffCaseNum, 0, "", 0, -1, 0);
+                snprintf(buffCaseNum, 1024, "  Rs232 Receive Data: %s \n", Rs232Recv_Str); 
+                while(filePutString(buffCaseNum, elcount(buffCaseNum), STHandle) != 1)
+                {}// 1: write success
+
+                substr_cpy_off(buffCaseNum, 0, "", 0, -1, 0);
+                snprintf(buffCaseNum, 1024, "  CAN Cmp Data: %s \n", CANCmpData_Str); 
+                while(filePutString(buffCaseNum, elcount(buffCaseNum), STHandle) != 1)
+                {}// 1: write success
+
+                substr_cpy_off(buffCaseNum, 0, "", 0, -1, 0);
+                snprintf(buffCaseNum, 1024, "  CAN Receive Data: %s \n", CanDataRecv_Str); 
+                while(filePutString(buffCaseNum, elcount(buffCaseNum), STHandle) != 1)
+                {}// 1: write success
+
+            }
+            else
+            {
+                snprintf(buffCaseNum, 1024, "Step %d: %s Fuction %d : NG \n",CaseStep, Action,Function_ID); 
+                while(filePutString(buffCaseNum, elcount(buffCaseNum), STHandle) != 1)
+                {}// 1: write success
+
+                substr_cpy_off(buffCaseNum, 0, "", 0, -1, 0);
+                snprintf(buffCaseNum, 1024, "  Rs232 Cmp Data: %s \n", Rs232CmpData_Str); 
+                while(filePutString(buffCaseNum, elcount(buffCaseNum), STHandle) != 1)
+                {}// 1: write success
+
+                substr_cpy_off(buffCaseNum, 0, "", 0, -1, 0);
+                snprintf(buffCaseNum, 1024, "  Rs232 Receive Data: %s \n", Rs232Recv_Str); 
+                while(filePutString(buffCaseNum, elcount(buffCaseNum), STHandle) != 1)
+                {}// 1: write success
+
+                substr_cpy_off(buffCaseNum, 0, "", 0, -1, 0);
+                snprintf(buffCaseNum, 1024, "  CAN Cmp Data: %s \n", CANCmpData_Str); 
+                while(filePutString(buffCaseNum, elcount(buffCaseNum), STHandle) != 1)
+                {}// 1: write success
+
+                substr_cpy_off(buffCaseNum, 0, "", 0, -1, 0);
+                snprintf(buffCaseNum, 1024, "  CAN Receive Data: %s \n", CanDataRecv_Str); 
+                while(filePutString(buffCaseNum, elcount(buffCaseNum), STHandle) != 1)
+                {}// 1: write success
+            }
+        }
+        else
+        {
+            substr_cpy_off(buffCaseNum, 0, "", 0, -1, 0);
+            snprintf(buffCaseNum, 1024, "Step %d: %s \n",CaseStep, Action); 
+            while(filePutString(buffCaseNum, elcount(buffCaseNum), STHandle) != 1)
+            {}// 1: write success
+        }
+
+        fileClose(STHandle);    
+    }
+}
+/*@@end*/
+
+/*@@caplFunc:RS232ByteCallback(dword,dword,dword):*///callback
+RS232ByteCallback(dword port, dword datum, dword note)
+{
+    write("port %d single byte recv:0x%x",port,datum);
+
+    if(0x3a == datum)
+	{
+		Rs232NewCommand = 1;
+		Rx232DataNum = 0;
+		Rx232CommCS = 0;
+	}
+	
+	if(1 == Rs232NewCommand)
+	{
+		Rs232buff_recv[Rx232DataNum] = datum;
+		
+		if(0x02 == Rx232DataNum)
+		{
+			Rx232CommLen = Rs232buff_recv[Rx232DataNum];
+		}
+
+		if((Rx232DataNum > 0) && (Rx232DataNum < Rx232CommLen + 3))
+		{
+			Rx232CommCS += Rs232buff_recv[Rx232DataNum];
+		}
+
+		if((Rx232DataNum == Rx232CommLen + 3) &&
+			 (Rx232CommCS == Rs232buff_recv[Rx232DataNum]))
+		{
+			Rs232NewCommand = 0;
+			Rs232Rsp_Recv = 1;
+			Rx232CommCS = 0;
+		}
+
+		Rx232DataNum ++;
+	}
+}
+/*@@end*/
+
+/*@@preStop:PreStop:*/
+on preStop
+{
+    CloseRS232Port (PortA);
+}
+/*@@end*/
+

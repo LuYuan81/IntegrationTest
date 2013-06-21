@@ -1,0 +1,113 @@
+[TestInformation]
+SCRIPT       	= V0.1
+TIMESTAMP   	=Sun Jun 09 16:30:29 2013 
+COMMENT    	= CAN DRIVER AND CAN INTERFACE
+TESTER      	= ADMIN
+SUMSTEP     	= 4
+
+[STEP1]
+ACTION      	= START
+TEST_ID        	= 101
+COMMENT         = CanStackUninitalized
+FUNCTION_ID     = 
+SEQUENCE_IN     = 
+SEQUENCE_OUT    = 
+DELAYTIME     = 0
+SETERRORFRAME   = 
+MESSAGETEXT     = 
+CANMSGIN_ID     = 
+CANMSGIN_DATA   = 
+
+[STEP2]
+ACTION          = CALL
+TEST_ID         = 220
+COMMENT        	= CanStackinitalized
+FUNCTION_ID     = 1
+SEQUENCE_IN     = 0
+SEQUENCE_OUT    = 
+DELAYTIME     = 
+SETERRORFRAME   = 22
+MESSAGETEXT     = hello!
+CANMSGIN_ID     = 22
+CANMSGIN_DATA   = 
+
+[STEP3]
+ACTION         	= CALL
+TEST_ID         = 002
+COMMENT        	= CanStackInitialization
+FUNCTION_ID     = 2
+SEQUENCE_IN     = 0,0
+SEQUENCE_OUT    = 0
+CHECKENABLE     = 
+SETERRORFRAME   = 
+MESSAGETEXT     = 
+CANMSGIN_ID     = 
+CANMSGIN_DATA   = 
+
+[STEP4]
+ACTION          = CANTX
+TEST_ID         = 99
+COMMENT        	= CanStackUninitalized
+FUNCTION_ID     = 1
+SEQUENCE_IN     = 01, 01,2,3,4
+SEQUENCE_OUT    = 
+DELAYTIME       = 1
+SETRRORFRAME    = 1
+MESSAGETEXT     = hello!
+CANMSGIN_ID     = 0x555
+CANMSGIN_DATA   = 
+
+[STEP5]
+ACTION         	= END
+TEST_ID            = 401
+COMMENT        	= CanStackUninitalized
+FUNCTION_ID     = 
+SEQUENCE_IN     = 
+SEQUENCE_OUT    = 
+DELAYTIME       = 0
+SETERRORFRAME   = 
+MESSAGETEXT     =
+CANMSGIN_ID     = 
+CANMSGIN_DATA   =
+
+[STEP6]
+ACTION         	= START
+TEST_ID            = 401
+COMMENT        	= CanStackInitialization
+FUNCTION_ID     = 
+SEQUENCE_IN     = 
+SEQUENCE_OUT    = 
+DELAYTIME       = 0
+SETERRORFRAME   = 
+MESSAGETEXT     =
+CANMSGIN_ID     = 
+CANMSGIN_DATA   =
+
+
+[STEP7]
+ACTION         	= CALL
+TEST_ID            = 401
+COMMENT        	= CanStackInitialization
+FUNCTION_ID     = 1
+SEQUENCE_IN     = 44, 44
+SEQUENCE_OUT    = 34,85
+DELAYTIME       = 0
+SETERRORFRAME   = 44
+MESSAGETEXT     = 44
+CANMSGIN_ID     = 44
+CANMSGIN_DATA   = 
+
+
+[STEP8]
+ACTION         	= END
+TEST_ID         = 401
+COMMENT        	= CanStackInitialization
+FUNCTION_ID     = 
+SEQUENCE_IN     = 
+SEQUENCE_OUT    = 
+DELAYTIME       = 0
+SETERRORFRAME   = 
+MESSAGETEXT     =
+CANMSGIN_ID     = 
+CANMSGIN_DATA   =
+ 

@@ -1,0 +1,30 @@
+<?xml version="1.0"?>
+<Panel Type="Vector.CANalyzer.Panels.PanelSerializer, Vector.CANalyzer.Panels.Serializer, Version=7.2.89.0, Culture=neutral, PublicKeyToken=null">
+  <Object Type="Vector.CANalyzer.Panels.Runtime.Panel, Vector.CANalyzer.Panels.Common, Version=7.2.89.0, Culture=neutral, PublicKeyToken=null" Name="Panel" Children="Controls" ControlName="StartPanel">
+    <Object Type="Vector.CANalyzer.Panels.Design.ButtonControl, Vector.CANalyzer.Panels.CommonControls, Version=7.2.89.0, Culture=neutral, PublicKeyToken=null" Name="ButtonControl2" Children="Controls" ControlName="Button 2">
+      <Property Name="Name">ButtonControl2</Property>
+      <Property Name="Size">150, 60</Property>
+      <Property Name="Location">141, 265</Property>
+      <Property Name="Text">START</Property>
+      <Property Name="SymbolConfiguration">4;16;STARTPANEL;;;Start;1;;;-1</Property>
+      <Property Name="TabIndex">1</Property>
+    </Object>
+    <Object Type="Vector.CANalyzer.Panels.Design.StaticTextControl, Vector.CANalyzer.Panels.CommonControls, Version=7.2.89.0, Culture=neutral, PublicKeyToken=null" Name="StaticTextControl1" Children="Controls" ControlName="Static Text">
+      <Property Name="Name">StaticTextControl1</Property>
+      <Property Name="Size">308, 48</Property>
+      <Property Name="Location">184, 97</Property>
+      <Property Name="Font">SimSun, 36pt</Property>
+      <Property Name="Text">集成测试平台</Property>
+    </Object>
+    <Object Type="Vector.CANalyzer.Panels.Design.ButtonControl, Vector.CANalyzer.Panels.CommonControls, Version=7.2.89.0, Culture=neutral, PublicKeyToken=null" Name="ButtonControl1" Children="Controls" ControlName="Button">
+      <Property Name="Name">ButtonControl1</Property>
+      <Property Name="Size">150, 60</Property>
+      <Property Name="Location">369, 265</Property>
+      <Property Name="Text">STOP</Property>
+      <Property Name="SymbolConfiguration">4;16;STARTPANEL;;;Stop;1;;;-1</Property>
+      <Property Name="TabIndex">0</Property>
+    </Object>
+    <Property Name="Name">Panel</Property>
+    <Property Name="Size">685, 523</Property>
+  </Object>
+</Panel>
